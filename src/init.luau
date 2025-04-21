@@ -6,6 +6,24 @@ local Types = require(script.types)
 local SpringService = {}
 SpringService.__index = SpringService
 
+-- Types
+type Options = {
+	smoothTime: number,
+	maxSpeed: number,
+	dt: number,
+	stepType: Enum.RenderPriority?,
+}
+type Tween = {
+	Event: RBXScriptConnection,
+	Stop: () -> (),
+	Resume: () -> (),
+	Play: () -> (),
+}
+type SpringService = {
+	Create: (object: Instance, options: Options, properties: { [string]: any }) -> Tween,
+}
+
+-- Functions
 local function AdjustProperty(object, property, value, options, velocitys, properties)
 	-- Fetch target and current value
 	local Type = typeof(value)
@@ -62,19 +80,21 @@ local function AdjustMultivariableProperty(object, property, value, options, vel
 end
 
 -- API
-function SpringService:Create(object, options, properties)
+function SpringService:Create(object: Instance, options: Options, properties: { [string]: any }): Tween
 	local velocitys = {}
+	local initalProperties = {}
 	for property, value in properties do
 		if not Types[typeof(value)] then
 			error(`SpringService: Type {typeof(value)} is not supported`)
 		end
 		velocitys[property] = Types[typeof(value)].InitialVelocity
+		initalProperties[property] = object[property]
 	end
 
 	-- Create event
 	local event
 	local active = false
-	event = runService.Heartbeat:Connect(function()
+	event = runService[options.stepType or "Stepped"]:Connect(function()
 		if not active then
 			return
 		end
@@ -90,14 +110,20 @@ function SpringService:Create(object, options, properties)
 
 	return {
 		Event = event,
-		Stop = function()
+		Destroy = function() -- Clean up
 			event:Disconnect()
 		end,
-		Play = function()
+		Resume = function() -- Play tween from current position
 			active = true
 		end,
-		Pause = function()
+		Stop = function() -- Stop tween
 			active = false
+		end,
+		Play = function() -- Play from start
+			for property, _ in properties do
+				object[property] = initalProperties[property]
+			end
+			active = true
 		end,
 	}
 end
