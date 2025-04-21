@@ -61,9 +61,9 @@ local function AdjustMultivariableProperty(object, property, value, options, vel
 			Current[v],
 			Target[v],
 			velocitys[property][v],
-			options.smoothTime,
-			options.maxSpeed,
-			options.dt
+			options.smoothTime or error("SmoothTime is required"),
+			options.maxSpeed or math.huge,
+			options.dt or error("dt is required")
 		)
 		velocitys[property][v] = newVelocity
 

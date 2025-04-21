@@ -6,8 +6,8 @@ local SpringService = require(ReplicatedStorage.SpringService)
 local Frame = Players.LocalPlayer.PlayerGui:WaitForChild("ScreenGui"):WaitForChild("Frame2")
 
 local tween = SpringService:Create(Frame.UIGradient, {
-	smoothTime = 1,
-	maxSpeed = math.huge,
+	smoothTime = 10,
+	maxSpeed = 1,
 	dt = 0.1,
 }, {
 	Transparency = NumberSequence.new({

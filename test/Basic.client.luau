@@ -6,7 +6,7 @@ local SpringService = require(ReplicatedStorage.SpringService)
 local Frame = Players.LocalPlayer.PlayerGui:WaitForChild("ScreenGui"):WaitForChild("Frame")
 
 local tween = SpringService:Create(Frame, {
-	smoothTime = 1,
+	smoothTime = 10,
 	maxSpeed = math.huge,
 	dt = 0.1,
 }, {
@@ -14,6 +14,4 @@ local tween = SpringService:Create(Frame, {
 	BackgroundColor3 = Color3.fromRGB(255, 0, 0),
 })
 
-print(tween.PlaybackState)
 tween:Play()
-print(tween.PlaybackState)
