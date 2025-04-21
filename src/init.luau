@@ -130,6 +130,10 @@ function SpringService:Create(object: Instance, options: Options, properties: { 
 		Event = nil,
 		PlaybackState = Enum.PlaybackState.Begin,
 		Destroy = function(this) -- Clean up
+			if this.Event == nil then
+				return
+			end
+
 			this.Event:Disconnect()
 			this.Event = nil
 			this.PlaybackState = Enum.PlaybackState.Cancelled
