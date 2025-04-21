@@ -14,4 +14,6 @@ local tween = SpringService:Create(Frame, {
 	BackgroundColor3 = Color3.fromRGB(255, 0, 0),
 })
 
+print(tween.PlaybackState)
 tween:Play()
+print(tween.PlaybackState)

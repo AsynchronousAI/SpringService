@@ -17,6 +17,7 @@ type Tween = {
 	Event: RBXScriptConnection,
 	Stop: () -> (),
 	Resume: () -> (),
+	Instance: Instance,
 	Play: () -> (),
 }
 type SpringService = {
@@ -81,6 +82,7 @@ end
 
 -- API
 function SpringService:Create(object: Instance, options: Options, properties: { [string]: any }): Tween
+	-- Inialize
 	local velocitys = {}
 	local initalProperties = {}
 	for property, value in properties do
@@ -91,14 +93,41 @@ function SpringService:Create(object: Instance, options: Options, properties: { 
 		initalProperties[property] = object[property]
 	end
 
+	-- Create
+	local Data: Tween = {
+		Instance = object,
+		Event = nil,
+		PlaybackState = Enum.PlaybackState.Begin,
+		Destroy = function(this) -- Clean up
+			this.Event:Disconnect()
+		end,
+		Resume = function(this) -- Play tween from current position
+			this.PlaybackState = Enum.PlaybackState.Playing
+		end,
+		Stop = function(this) -- Stop tween
+			this.PlaybackState = Enum.PlaybackState.Paused
+		end,
+		Play = function(this) -- Play from start
+			for property, _ in properties do
+				this.Instance[property] = initalProperties[property]
+			end
+			this.PlaybackState = Enum.PlaybackState.Playing
+		end,
+	}
+
 	-- Create event
-	local event
-	local active = false
-	event = runService[options.stepType or "Stepped"]:Connect(function()
-		if not active then
+	Data.Event = runService[options.stepType or "Stepped"]:Connect(function()
+		if Data.PlaybackState ~= Enum.PlaybackState.Playing then
 			return
 		end
 
+		-- Check if tween is resolved
+		if next(properties) == nil then
+			Data:Destroy()
+			return
+		end
+
+		-- Run animations
 		for property, value in properties do
 			if typeof(velocitys[property]) == "table" then -- Multivariable
 				AdjustMultivariableProperty(object, property, value, options, velocitys, properties)
@@ -108,24 +137,7 @@ function SpringService:Create(object: Instance, options: Options, properties: { 
 		end
 	end)
 
-	return {
-		Event = event,
-		Destroy = function() -- Clean up
-			event:Disconnect()
-		end,
-		Resume = function() -- Play tween from current position
-			active = true
-		end,
-		Stop = function() -- Stop tween
-			active = false
-		end,
-		Play = function() -- Play from start
-			for property, _ in properties do
-				object[property] = initalProperties[property]
-			end
-			active = true
-		end,
-	}
+	return Data
 end
 
 return SpringService
