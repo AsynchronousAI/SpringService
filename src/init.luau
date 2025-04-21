@@ -22,12 +22,33 @@ type Tween = {
 	Resume: (Tween) -> (),
 	Play: (Tween) -> (),
 	Destroy: (Tween) -> (),
+	PlayYield: (Tween) -> (),
+	ResumeYield: (Tween) -> (),
 }
 type SpringService = {
 	Create: (object: Instance, options: Options, properties: { [string]: any }) -> Tween,
 }
 
 -- Functions
+local function Round(Value)
+	if typeof(Value) == "number" then
+		return math.floor(Value * 1000) / 1000
+	elseif typeof(Value) == "Vector3" then
+		return Vector3.new(
+			math.floor(Value.X * 1000) / 1000,
+			math.floor(Value.Y * 1000) / 1000,
+			math.floor(Value.Z * 1000) / 1000
+		)
+	elseif typeof(Value) == "CFrame" then
+		local cframeTable = table.pack(Value:GetComponents())
+		for i, v in pairs(cframeTable) do
+			cframeTable[i] = math.floor(v * 1000) / 1000
+		end
+		return CFrame.new(table.unpack(cframeTable))
+	else
+		error("Unroundable result")
+	end
+end
 local function AdjustProperty(object, property, value, options, velocitys, properties)
 	-- Fetch target and current value
 	local Type = typeof(value)
@@ -40,7 +61,7 @@ local function AdjustProperty(object, property, value, options, velocitys, prope
 
 	-- Appply
 	velocitys[property] = newVelocity
-	object[property] = Types[Type].ConvertTo(newValue)
+	object[property] = Types[Type].ConvertTo(Round(newValue))
 
 	-- Check if this is resolved
 	if object[property] == value then
@@ -54,7 +75,6 @@ local function AdjustMultivariableProperty(object, property, value, options, vel
 	local Target = Types[Type].ConvertFrom(value, additionalData)
 
 	-- Compute new value
-	local resolved = true
 	local newValues = {}
 	for v = 1, #velocitys[property] do
 		local newValue, newVelocity = tweenService:SmoothDamp(
@@ -67,18 +87,13 @@ local function AdjustMultivariableProperty(object, property, value, options, vel
 		)
 		velocitys[property][v] = newVelocity
 
-		newValues[v] = newValue
+		newValues[v] = Round(newValue)
 	end
 
 	-- Apply
 	object[property] = Types[Type].ConvertTo(newValues, additionalData)
 
-	if object[property] ~= value then
-		resolved = false
-	end
-
-	-- Check if this is resolved
-	if resolved then
+	if object[property] == value then
 		properties[property] = nil
 	end
 end
@@ -113,6 +128,8 @@ function SpringService:Create(object: Instance, options: Options, properties: { 
 		PlaybackState = Enum.PlaybackState.Begin,
 		Destroy = function(this) -- Clean up
 			this.Event:Disconnect()
+			this.Event = nil
+			this.PlaybackState = Enum.PlaybackState.Cancelled
 		end,
 		Resume = function(this) -- Play tween from current position
 			this.PlaybackState = Enum.PlaybackState.Playing
@@ -125,6 +142,18 @@ function SpringService:Create(object: Instance, options: Options, properties: { 
 				this.Instance[property] = initalProperties[property]
 			end
 			this.PlaybackState = Enum.PlaybackState.Playing
+		end,
+		PlayYield = function(this) -- Play and wait for completion
+			this:Play()
+			while this.PlaybackState == Enum.PlaybackState.Playing do
+				task.wait()
+			end
+		end,
+		ResumeYield = function(this) -- Resume and wait for completion
+			this:Resume()
+			while this.PlaybackState == Enum.PlaybackState.Playing do
+				task.wait()
+			end
 		end,
 	}
 
