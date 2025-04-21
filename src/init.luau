@@ -44,11 +44,11 @@ local function AdjustProperty(object, property, value, options, velocitys, prope
 		properties[property] = nil
 	end
 end
-local function AdjustMultivariableProperty(object, property, value, options, velocitys, properties)
+local function AdjustMultivariableProperty(object, property, value, options, velocitys, properties, additionalData)
 	-- Fetch target and current value
 	local Type = typeof(value)
-	local Current = Types[Type].ConvertFrom(object[property])
-	local Target = Types[Type].ConvertFrom(value)
+	local Current = Types[Type].ConvertFrom(object[property], additionalData)
+	local Target = Types[Type].ConvertFrom(value, additionalData)
 
 	-- Compute new value
 	local resolved = true
@@ -68,7 +68,7 @@ local function AdjustMultivariableProperty(object, property, value, options, vel
 	end
 
 	-- Apply
-	object[property] = Types[Type].ConvertTo(newValues)
+	object[property] = Types[Type].ConvertTo(newValues, additionalData)
 
 	if object[property] ~= value then
 		resolved = false
@@ -85,11 +85,21 @@ function SpringService:Create(object: Instance, options: Options, properties: { 
 	-- Inialize
 	local velocitys = {}
 	local initalProperties = {}
+	local additionalData = {}
 	for property, value in properties do
 		if not Types[typeof(value)] then
 			error(`SpringService: Type {typeof(value)} is not supported`)
 		end
-		velocitys[property] = Types[typeof(value)].InitialVelocity
+
+		local Velocity = Types[typeof(value)].InitialVelocity
+		if typeof(Velocity) == "function" then
+			local newAdditionalData
+			Velocity, newAdditionalData = Velocity(object[property], value)
+
+			additionalData[property] = newAdditionalData
+		end
+
+		velocitys[property] = Velocity
 		initalProperties[property] = object[property]
 	end
 
@@ -130,7 +140,15 @@ function SpringService:Create(object: Instance, options: Options, properties: { 
 		-- Run animations
 		for property, value in properties do
 			if typeof(velocitys[property]) == "table" then -- Multivariable
-				AdjustMultivariableProperty(object, property, value, options, velocitys, properties)
+				AdjustMultivariableProperty(
+					object,
+					property,
+					value,
+					options,
+					velocitys,
+					properties,
+					additionalData[property]
+				)
 			else -- Single variable
 				AdjustProperty(object, property, value, options, velocitys, properties)
 			end

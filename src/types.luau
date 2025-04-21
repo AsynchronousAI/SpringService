@@ -1,11 +1,35 @@
+-- Types
 type TypeHandler<A, B> = {
 	InitialVelocity: A,
-	ConvertTo: (A) -> B,
-	ConvertFrom: (B) -> A,
+	ConvertTo: (A, any) -> B,
+	ConvertFrom: (B, any) -> A,
 }
 
+-- Function
+local function evalNumberSequence(sequence: NumberSequence, time: number)
+	-- If time is 0 or 1, return the first or last value respectively
+	if time == 0 then
+		return sequence.Keypoints[1].Value
+	elseif time == 1 then
+		return sequence.Keypoints[#sequence.Keypoints].Value
+	end
+
+	-- Otherwise, step through each sequential pair of keypoints
+	for i = 1, #sequence.Keypoints - 1 do
+		local currKeypoint = sequence.Keypoints[i]
+		local nextKeypoint = sequence.Keypoints[i + 1]
+		if time >= currKeypoint.Time and time < nextKeypoint.Time then
+			-- Calculate how far alpha lies between the points
+			local alpha = (time - currKeypoint.Time) / (nextKeypoint.Time - currKeypoint.Time)
+			-- Return the value between the points using alpha
+			return currKeypoint.Value + (nextKeypoint.Value - currKeypoint.Value) * alpha
+		end
+	end
+end
+
+-- Return
 return {
-	-- Default
+	--# Default
 	["number"] = {
 		InitialVelocity = 0,
 		ConvertTo = function(value)
@@ -34,7 +58,7 @@ return {
 		end,
 	},
 
-	-- Simple conversion
+	--# Simple conversion
 	["Color3"] = {
 		InitialVelocity = Vector3.zero,
 		ConvertTo = function(value)
@@ -81,7 +105,7 @@ return {
 		end,
 	},
 
-	-- Multivariable conversion
+	--# Multivariable conversion
 	["UDim2"] = {
 		InitialVelocity = { Vector3.zero, Vector3.zero },
 		ConvertTo = function(values)
@@ -98,6 +122,57 @@ return {
 		end,
 		ConvertFrom = function(value)
 			return { Vector3.new(value.Min.X, value.Min.Y, 0), Vector3.new(value.Max.X, value.Max.Y, 0) }
+		end,
+	},
+
+	--# Functions
+	["NumberSequence"] = {
+		InitialVelocity = function(A, B)
+			-- Collect all times we will tween off
+			local allTimes = {}
+			for _, keypoint in A.Keypoints do
+				table.insert(allTimes, keypoint.Time)
+			end
+			for _, keypoint in B.Keypoints do
+				table.insert(allTimes, keypoint.Time)
+			end
+
+			-- Remove duplicates
+			local uniqueTimes = {}
+			for _, time in ipairs(allTimes) do
+				if not table.find(uniqueTimes, time) then
+					table.insert(uniqueTimes, time)
+				end
+			end
+
+			-- Turn into a table of velocities
+			local velocities = {}
+			local times = {}
+			for _, time in ipairs(uniqueTimes) do
+				table.insert(velocities, 0)
+				table.insert(times, time)
+			end
+
+			return velocities, times
+		end,
+
+		ConvertTo = function(sequence, times)
+			local keypoints = {}
+			for index, time in times do
+				table.insert(keypoints, NumberSequenceKeypoint.new(time, sequence[index]))
+			end
+
+			return NumberSequence.new(keypoints)
+		end,
+
+		ConvertFrom = function(sequence, times)
+			local keypoints = {}
+			for _, time in times do
+				local keypoint = evalNumberSequence(sequence, time)
+				table.insert(keypoints, keypoint)
+			end
+
+			return keypoints
 		end,
 	},
 } :: { [string]: TypeHandler<any, any> }
