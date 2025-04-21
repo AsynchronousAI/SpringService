@@ -71,8 +71,14 @@ function SpringService:Create(object, options, properties)
 		velocitys[property] = Types[typeof(value)].InitialVelocity
 	end
 
+	-- Create event
 	local event
+	local active = false
 	event = runService.Heartbeat:Connect(function()
+		if not active then
+			return
+		end
+
 		for property, value in properties do
 			if typeof(velocitys[property]) == "table" then -- Multivariable
 				AdjustMultivariableProperty(object, property, value, options, velocitys, properties)
@@ -82,7 +88,18 @@ function SpringService:Create(object, options, properties)
 		end
 	end)
 
-	return event
+	return {
+		Event = event,
+		Stop = function()
+			event:Disconnect()
+		end,
+		Play = function()
+			active = true
+		end,
+		Pause = function()
+			active = false
+		end,
+	}
 end
 
 return SpringService
