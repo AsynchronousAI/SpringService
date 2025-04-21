@@ -15,10 +15,13 @@ type Options = {
 }
 type Tween = {
 	Event: RBXScriptConnection,
-	Stop: () -> (),
-	Resume: () -> (),
 	Instance: Instance,
-	Play: () -> (),
+	PlaybackState: Enum.PlaybackState,
+
+	Stop: (Tween) -> (),
+	Resume: (Tween) -> (),
+	Play: (Tween) -> (),
+	Destroy: (Tween) -> (),
 }
 type SpringService = {
 	Create: (object: Instance, options: Options, properties: { [string]: any }) -> Tween,

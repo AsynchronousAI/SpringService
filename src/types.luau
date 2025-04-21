@@ -26,6 +26,30 @@ local function evalNumberSequence(sequence: NumberSequence, time: number)
 		end
 	end
 end
+local function evalColorSequence(sequence: ColorSequence, time: number)
+	-- If time is 0 or 1, return the first or last value respectively
+	if time == 0 then
+		return sequence.Keypoints[1].Value
+	elseif time == 1 then
+		return sequence.Keypoints[#sequence.Keypoints].Value
+	end
+
+	-- Otherwise, step through each sequential pair of keypoints
+	for i = 1, #sequence.Keypoints - 1 do
+		local thisKeypoint = sequence.Keypoints[i]
+		local nextKeypoint = sequence.Keypoints[i + 1]
+		if time >= thisKeypoint.Time and time < nextKeypoint.Time then
+			-- Calculate how far alpha lies between the points
+			local alpha = (time - thisKeypoint.Time) / (nextKeypoint.Time - thisKeypoint.Time)
+			-- Evaluate the real value between the points using alpha
+			return Color3.new(
+				(nextKeypoint.Value.R - thisKeypoint.Value.R) * alpha + thisKeypoint.Value.R,
+				(nextKeypoint.Value.G - thisKeypoint.Value.G) * alpha + thisKeypoint.Value.G,
+				(nextKeypoint.Value.B - thisKeypoint.Value.B) * alpha + thisKeypoint.Value.B
+			)
+		end
+	end
+end
 
 -- Return
 return {
@@ -170,6 +194,57 @@ return {
 			for _, time in times do
 				local keypoint = evalNumberSequence(sequence, time)
 				table.insert(keypoints, keypoint)
+			end
+
+			return keypoints
+		end,
+	},
+	["ColorSequence"] = {
+		InitialVelocity = function(A, B)
+			-- Collect all times we will tween off
+			local allTimes = {}
+			for _, keypoint in A.Keypoints do
+				table.insert(allTimes, keypoint.Time)
+			end
+			for _, keypoint in B.Keypoints do
+				table.insert(allTimes, keypoint.Time)
+			end
+
+			-- Remove duplicates
+			local uniqueTimes = {}
+			for _, time in ipairs(allTimes) do
+				if not table.find(uniqueTimes, time) then
+					table.insert(uniqueTimes, time)
+				end
+			end
+
+			-- Turn into a table of velocities
+			local velocities = {}
+			local times = {}
+			for _, time in ipairs(uniqueTimes) do
+				table.insert(velocities, Vector3.new(0, 0, 0))
+				table.insert(times, time)
+			end
+
+			return velocities, times
+		end,
+
+		ConvertTo = function(sequence, times)
+			local keypoints = {}
+			for index, time in times do
+				local keypoint = sequence[index]
+				local asColor = Color3.new(keypoint.X, keypoint.Y, keypoint.Z)
+				table.insert(keypoints, ColorSequenceKeypoint.new(time, asColor))
+			end
+
+			return ColorSequence.new(keypoints)
+		end,
+
+		ConvertFrom = function(sequence, times)
+			local keypoints = {}
+			for _, time in times do
+				local keypoint = evalColorSequence(sequence, time)
+				table.insert(keypoints, Vector3.new(keypoint.R, keypoint.G, keypoint.B))
 			end
 
 			return keypoints

@@ -14,6 +14,10 @@ local tween = SpringService:Create(Frame.UIGradient, {
 		NumberSequenceKeypoint.new(0, 0),
 		NumberSequenceKeypoint.new(1, 1),
 	}),
+	Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(128, 0, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 255, 128)),
+	}),
 })
 
 tween:Play()
