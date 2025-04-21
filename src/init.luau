@@ -29,6 +29,9 @@ type SpringService = {
 	Create: (object: Instance, options: Options, properties: { [string]: any }) -> Tween,
 }
 
+-- Global
+_G.ActiveTweens = {}
+
 -- Functions
 local function Round(Value)
 	if typeof(Value) == "number" then
@@ -156,6 +159,12 @@ function SpringService:Create(object: Instance, options: Options, properties: { 
 			end
 		end,
 	}
+
+	-- Avoid tween stacking
+	if _G.ActiveTweens[object] then
+		_G.ActiveTweens[object]:Destroy()
+	end
+	_G.ActiveTweens[object] = Data
 
 	-- Create event
 	Data.Event = runService[options.stepType or "Stepped"]:Connect(function()
